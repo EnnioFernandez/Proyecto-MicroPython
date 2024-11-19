@@ -3,10 +3,31 @@ from time import sleep, time
 import utime
 
 # Configuración de pines
-Pines= [0, 15, 2, 4, 16, 17, 5, 18, 19, 23, 13, 0, 12, 14, 27, 26, 25, 33, 32, 35]
-PinIN= [0, 12, 14, 27, 26, 25, 33, 32, 35]
-DO = [Pin(pin, Pin.OUT) for pin in Pines]  # Salidas digitales DO1 a DO10
-DI = [Pin(pin + 11, Pin.IN, Pin.PULL_DOWN) for pin in range Pines]  # Entradas digitales DI1 a DI7
+Pines= [0, 15, 2, 4, 16, 17, 5, 18, 19, 23, 13
+        0, 12, 14, 27, 26, 25, 33, 32, 35]
+
+DO = [Pin(pin, Pin.OUT) for pin in Pines[0:10]]  # Salidas digitales DO1 a DO10
+#D0[1]: Husillo
+#D0[2]: Ciclón
+#D0[3]: VFD-Carro
+#D0[4]: Inversión-VFD
+#D0[5]: Velocidad Rápida VFD
+#D0[6]: División
+#D0[7]: Bomba hidráulica
+#D0[8]: Bobina EVB1
+#D0[9]: Bobina EVB2
+#D0[10]: Fin de ciclo
+
+DI = [Pin(pin, Pin.IN, Pin.PULL_DOWN) for pin in Pines[11:20]]  # Entradas digitales DI1 a DI8
+#DI[1]: K1-Fin de carrera +X
+#DI[2]: K2-Fin de carrera -X
+#DI[3]: K3-Fin de carrera +Y
+#DI[4]: K4-Fin de carrera -Y
+#DI[5]: Error Protección Térmica
+#DI[6]: Presostato
+#DI[7]: Inicio de ciclo
+#DI[8]: Perilla modo automático/manual
+
 AI1 = ADC(Pin(36))  # Potenciómetro P1 (regulación bajada EVB1)
 AI2 = ADC(Pin(39))  # Potenciómetro P2 (regulación división)
 
@@ -39,7 +60,7 @@ def detener_todo():
 
 # Verificar posición inicial de K4 y K2
 def verificar_posicion_inicial():
-    if not DI[3].value() or not DI[1].value():  # K4 y K2
+    if not DI[4].value() or not DI[2].value():  # K4 y K2
         mostrar_mensaje("Error: Posición inicial")
         detener_todo()
         return False
@@ -47,7 +68,7 @@ def verificar_posicion_inicial():
 
 # Leer los valores de los potenciómetros
 def leer_potenciometro(ai):
-    return (ai.read_u16() / 65535) * 10  # Escala a 0-10 segundos
+    return (ai.read() / 4095) * 10  # Escala a 0-10 segundos
 
 # Secuencia de automatización
 def secuencia_automatica():
@@ -57,18 +78,24 @@ def secuencia_automatica():
 
     # Paso 2: Acercamiento del carro rápidamente (R3)
     mostrar_mensaje("Moviendo a K1")
-    activar_salida(4)  # Activar velocidad rápida (R3)
+    activar_salida(5)  # Activar velocidad rápida (R3)
     inicio_tiempo = time()
-    while not DI[0].value():  # Espera por K1
+    while not DI[1].value():  # Espera por K1
         if time() - inicio_tiempo > 5:  # Timeout de 5 segundos
             mostrar_mensaje("Error: Timeout K1")
             detener_todo()
             return
-    DO[4].off()  # Detener R3
+    DO[5].off()  # Detener R3
 
-    # Paso 3: Bajar herramienta (EVB1)
+    # Paso 3: Bajar herramienta (EVB2)
     mostrar_mensaje("Bajando herramienta")
-    activar_salida(8)  # Activar bobina B2
+    inicio_tiempo= time()
+    while not DI[3].value():  #Espera por K3
+        tiempo_bajada = leer_potenciometro(AI1)
+        if time() - inicio_tiempo > tiempo_bajada:
+            
+        
+    activar_salida(9)  # Activar bobina B2
     tiempo_bajada = leer_potenciometro(AI1)
     sleep(tiempo_bajada)
     if not DI[2].value():  # Verificar K3
