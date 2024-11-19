@@ -1,6 +1,5 @@
 from machine import Pin, ADC, I2C
-from time import sleep, time
-from lcd_api import LcdApi
+from time import sleep as delay
 from i2c_lcd import I2cLcd
 
 
