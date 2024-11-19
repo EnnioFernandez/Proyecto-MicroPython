@@ -3,9 +3,10 @@ from time import sleep, time
 import utime
 
 # Configuración de pines
-i= [0, 15, 2, 4, 16, 17, 5, 18, 19, 3, 1, 23, 13, 12, 14, 27, 26, 25, 33, 32, 35, 34]
-DO = [Pin(i, Pin.OUT) for i in range(10)]  # Salidas digitales DO1 a DO10
-DI = [Pin(i + 12, Pin.IN, Pin.PULL_DOWN) for i in range(8)]  # Entradas digitales DI1 a DI7
+Pines= [0, 15, 2, 4, 16, 17, 5, 18, 19, 23, 13, 0, 12, 14, 27, 26, 25, 33, 32, 35]
+PinIN= [0, 12, 14, 27, 26, 25, 33, 32, 35]
+DO = [Pin(pin, Pin.OUT) for pin in Pines]  # Salidas digitales DO1 a DO10
+DI = [Pin(pin + 11, Pin.IN, Pin.PULL_DOWN) for pin in range Pines]  # Entradas digitales DI1 a DI7
 AI1 = ADC(Pin(36))  # Potenciómetro P1 (regulación bajada EVB1)
 AI2 = ADC(Pin(39))  # Potenciómetro P2 (regulación división)
 
