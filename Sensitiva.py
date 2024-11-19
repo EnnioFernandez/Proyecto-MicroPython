@@ -1,5 +1,8 @@
 from machine import Pin, ADC, I2C
 from time import sleep, time
+from lcd_api import LcdApi
+from i2c_lcd import I2cLcd
+
 
 # Configuración de pines
 Pines= [0, 15, 2, 4, 16, 17, 5, 18, 19, 23, 13, 
@@ -39,14 +42,14 @@ AI1.atten(ADC.ATTN_11DB)
 AI2.atten(ADC.ATTN_11DB)
 
 # Configuración de I2C para la pantalla LCD
-i2c = I2C(0, scl=Pin(22), sda=Pin(21), freq=400000)
-from lcd1602 import LCD  # Asegúrate de incluir la librería para LCD
-lcd = LCD(i2c, addr=0x27)
+i2c = I2C(scl=Pin(22), sda=Pin(21), freq=10000)     #initializing the I2C method for ESP32
+
+lcd = I2cLcd(i2c, 0x27, 2, 16)
 
 # Función para mostrar mensajes en pantalla
-def mostrar(mensaje, linea=0):
-    lcd.move_to(0, linea)
-    lcd.write(mensaje)
+def mostrar(mensaje, fila=0, columna=0):
+    lcd.move_to(fila, columna)
+    lcd.putstr(mensaje)
     
 # Función para activar una salida digital
 def activar(salida):
@@ -79,8 +82,7 @@ def leer_potenciometro(ai):
 
 def main():
     while True:
-        mostrar("funciona")
-        lcd.write("hola")
+        mostrar("Funciona", 3, 1)
 
         if leer("K1"):
             activar("Husillo")
