@@ -1,11 +1,12 @@
 from machine import Pin, ADC, I2C
-from time import sleep as delay
+from time import ticks_ms, sleep as delay
+
 from i2c_lcd import I2cLcd
 
 
 # Configuración de pines
 Pines= [0, 2, 4, 15, 5, 17, 16, 18, 19, 
-        0, 23, 13, 12, 14, 27, 26, 25, 33]
+        0, 23, 13, 12, 14, 27, 26, 25, 33, 32]
 
 # Pines de Salida digital DO
 DO = [Pin(pin, Pin.OUT) for pin in Pines[0:9]]  # Salidas digitales DO1 a DO10
@@ -15,13 +16,13 @@ Salidas= {
     "Inv Carro"  : DO[3], #Inversion de marcha del Carro
     "Vel rapida" : DO[4], #Velocidad rápida del Carro
     "Division"   : DO[5], #División
-    "EV Up"    : DO[6], #Cilindro hacia arriba
-    "EV Down"  : DO[7], #Cilindro hacia abajo
+    "EV Up"      : DO[6], #Cilindro hacia arriba
+    "EV Down"    : DO[7], #Cilindro hacia abajo
     "Fin"        : DO[8]  #Fin del ciclo
     }
 
 # Pines de entrada digital DI
-DI = [Pin(pin, Pin.IN, Pin.PULL_DOWN) for pin in Pines[11:20]]  # Entradas digitales DI1 a DI8
+DI = [Pin(pin, Pin.IN, Pin.PULL_DOWN) for pin in Pines[9:19]]  # Entradas digitales DI1 a DI8
 Entradas = {
     "K1"    : DI[1],  #Fin de carrera +X
     "K2"    : DI[2],  #Fin de carrera -X
@@ -30,7 +31,8 @@ Entradas = {
     "PT"    : DI[5],  #Error Protección Térmica
     "PS"    : DI[6],  #Presostato
     "Start" : DI[7],  #Inicio de ciclo
-    "MOdo"  : DI[8]   #Perilla modo automático/manual
+    "Modo"  : DI[8],  #Perilla modo automático/manual
+    "Stop"  : DI[9]   #Parada de emergencia
     }
 
 # Pines de entrada analógica AI   
@@ -42,17 +44,22 @@ AI1.atten(ADC.ATTN_11DB)
 AI2.atten(ADC.ATTN_11DB)
 
 Potenciometro = {
-    "P1"    :   AI1, 
-    "P2"    :   AI2,
-    "P3"    :   AI3
+    "P1"    :   AI1,    # Tiempo de bajada
+    "P2"    :   AI2,    # Tiempo de división
+    "P3"    :   AI3     # Número de cortes
 }
 
 # Configuración de I2C para la pantalla LCD
 i2c = I2C(scl=Pin(22), sda=Pin(21), freq=10000)     #initializing the I2C method for ESP32
 lcd = I2cLcd(i2c, 0x27, 2, 16)
 
+#Función para determinar el tiempo transcurrido en segundos
+def time():
+    return ticks_ms()/1000
+
 # Función para mostrar mensajes en pantalla
 def mostrar_mensaje(mensaje, fila=0, columna=0):
+    lcd.clear()
     lcd.move_to(fila, columna)
     lcd.putstr(mensaje)
     
@@ -71,8 +78,9 @@ def desactivar(salida1, salida2=None):
 # Función para leer entrada digital
 def leer(entrada, escala=None):
     if entrada in ["P1", "P2", "P3"]:
-        return (potenciómetros[ai].read()/4095)*escala
-    return Entradas[entrada].value()
+        return (Potenciometro[entrada].read()/4095)*escala
+    else:
+        return Entradas[entrada].value()
     
 # Función para detener todas las salidas digitales
 def detener_todo():
@@ -101,11 +109,12 @@ def Secuencia_automatica():
     mostrar_mensaje("Moviendo a K1")
     activar("Carro", "Vel rapida")    # Activar carro a velocidad rápida(R1 y R3)
     inicio_tiempo = time()  # Inicia tiempo de espera
-    while not leer("K1").value():  # Espera por K1
-        if time() - inicio_tiempo > 5:  # Timeout de 5 segundos
-            mostrar_mensaje("Err2: Timeout K1")
-            detener_todo()
-            return
+    #while not leer("K1").value():  # Espera por K1
+        #if time() - inicio_tiempo > 5:  # Timeout de 5 segundos
+            #mostrar_mensaje("Err2: Timeout K1")
+            #detener_todo()
+            #return
+
     desactivar("Carro", "Vel rapida")  # Detener R1 y R3
 
     # Paso 3: Bajar herramienta (EVB2)
@@ -146,11 +155,11 @@ def Secuencia_automatica():
 
 
     # Paso 8: Activar división
-    mostrar_mensaje("Inicio división")
+    mostrar_mensaje("Inicio division")
     activar("Division")  # Activar división M4
     tiempo_division = leer("P2", 5)
-    sleep(tiempo_division)
-    deactivar("Division")  # Detener M4
+    delay(tiempo_division)
+    desactivar("Division")  # Detener M4
 
     # Repetir desde el paso 1
     mostrar_mensaje("Corte completado")
@@ -158,6 +167,8 @@ def Secuencia_automatica():
     
 def monitoreo():
     if leer("PT"):
+        pass
+
 
 def main():
     while True:
@@ -165,11 +176,11 @@ def main():
             if leer("Start" ):
                 for i in range (leer("P1", 12)):
                     Secuencia_automatica()
-                mostrar("Ciclo terminado")
+                mostrar_mensaje("Ciclo terminado")
                 activar("Fin")
-                delay(5)
+                delay(3)
+                desactivar("Fin")
         
-
         else:
             monitoreo()
 
