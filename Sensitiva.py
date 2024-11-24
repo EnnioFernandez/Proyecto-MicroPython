@@ -220,7 +220,7 @@ DI[5].irq(trigger=Pin.IRQ_RISING, handler=monitoreo)
 #   Interrupción por PS:
 DI[6].irq(trigger=Pin.IRQ_RISING, handler=monitoreo)
 
-#   Interrupción por STOP:
+#   Interrupción por Stop:
 DI[9].irq(trigger=Pin.IRQ_RISING, handler=monitoreo)    
 
 
