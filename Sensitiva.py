@@ -100,24 +100,65 @@ def detener_todo():
     for salida in DO:
         salida.off()
 
+
 # Verificar posición inicial de K4 y K2
 def verificar_posicion_inicial():
-    if not leer("K4") or not leer("K2"):  # K4 y K2
-        mostrar_mensaje("Error: Posición inicial")
-        detener_todo()
+    if not leer("K2") or not leer("K4"):  # K4 y K2
         return False
     return True
 
-# Leer los valores de los potenciómetros
-def leer_potenciometro(ai, escala):
-    return (potenciómetros[ai].read() / 4095) * escala  # Escala a 0-12 segundos
+#   Listado de Errores:
+def Falla(error):
+    #   Error 1: Protección Térmica
+    if error == "Error 1":
+        lcd.clear()
+        mostrar_mensaje("Error 1:      ")
+        mostrar_mensaje("Prot Termica  ",0,1)
+
+    if error == "Error 2":
+        lcd.clear()
+        mostrar_mensaje("Error 2:      ")
+        mostrar_mensaje("Presostato    ",0,1)
+
+    if error == "Error 3":
+        lcd.clear()
+        mostrar_mensaje("Error 3:      ")
+        mostrar_mensaje("Parada Emergencia",0,1)
+
+    if error == "Error 4":
+        lcd.clear()
+        mostrar_mensaje("Error 4: K2-K4  ")
+        activar("Fin")
+
+    if error == "Error 5":
+        lcd.clear()
+        mostrar_mensaje("Error 5: K1     ")
+        activar("Fin")
+
+    if error == "Error 6":
+        lcd.clear()
+        mostrar_mensaje("Error 6: K2     ")
+        activar("Fin")
+
+    if error == "Error 7":
+        lcd.clear()
+        mostrar_mensaje("Error 7: K4     ")
+        activar("Fin")
+    
+    if error == None:
+        return False
+    
+    delay(1)
+    detener_todo()
+    return True
+
+
+
 
 def Secuencia_automatica():
     #Paso 1: Verificación de posición inicial
     if not verificar_posicion_inicial():
-        lcd.clear()
-        mostrar_mensaje("Err1: falla posicion inicial")
-        return
+        return "Error 4"
 
     # Paso 2: Acercamiento del carro rápidamente (R1, R3)
     lcd.clear()
@@ -126,10 +167,9 @@ def Secuencia_automatica():
     inicio_tiempo = time()  # Inicia tiempo de espera
     while not leer("K1"):  # Espera por K1
         if time() - inicio_tiempo > 15:  # Timeout de 5 segundos
-            lcd.clear()
-            mostrar_mensaje("Err2: Timeout K1")
-            detener_todo()
-            return
+            activar("Fin")
+            delay(1)
+            return "Error 5"
 
     desactivar("Carro", "Vel rapida")  # Detener R1 y R3
 
@@ -156,10 +196,9 @@ def Secuencia_automatica():
     inicio_tiempo = time()
     while not leer("K2"):  # Espera por K2
         if time() - inicio_tiempo > 25:  # Timeout de 25 segundos
-            lcd.clear()
-            mostrar_mensaje("Error: Timeout K2")
-            detener_todo()
-            return
+            activar("Fin")
+            delay(1)
+            return "Error 6"
     desactivar("Carro")  # Detener avance
 
     # Paso 6: Apagar husillo
@@ -171,8 +210,10 @@ def Secuencia_automatica():
     lcd.clear()
     mostrar_mensaje("Subiendo herramienta")
     activar("EV Up")  # Activar bobina B1
+    inicio_tiempo = time()
     while not leer("K4"):  # Espera por K4
-        delay(1)  # intervalo de espera
+        if time() - inicio_tiempo > 10:
+            return "Error 7"
     desactivar("EV Up")  # Detener B1
 
 
@@ -186,7 +227,7 @@ def Secuencia_automatica():
 
     # Repetir desde el paso 1
     mostrar_mensaje("Corte completado")
-    delay(1)
+    delay(2)
  
 
 
@@ -194,21 +235,15 @@ def monitoreo(pin):
     detener_todo()
     while leer("PT") or leer("Stop") or leer("PS"):
         if leer("PT"):
-            lcd.clear()
-            mostrar_mensaje("Error 1:")
-            mostrar_mensaje("Prot Termica", 0, 1)
+            Falla("Error 1")
             delay(2)
         
         if leer("PS"):
-            lcd.clear()
-            mostrar_mensaje("Error 2:")
-            mostrar_mensaje("Presostato", 0, 1)
+            Falla("Error 2")
             delay(2)
 
         if leer("Stop"):
-            lcd.clear()
-            mostrar_mensaje("Error 3:")
-            mostrar_mensaje("PARADA", 0, 1)
+            Falla("Error 3")
             delay(2)
 
 
@@ -220,29 +255,37 @@ DI[5].irq(trigger=Pin.IRQ_RISING, handler=monitoreo)
 #   Interrupción por PS:
 DI[6].irq(trigger=Pin.IRQ_RISING, handler=monitoreo)
 
-#   Interrupción por Stop:
+#   Interrupción por STOP:
 DI[9].irq(trigger=Pin.IRQ_RISING, handler=monitoreo)    
 
 
 
 def main():
+    global set_cortes
     mostrar_mensaje("Sensitiva ON")
+    delay(2)
     while True:
         if leer("Modo"):
             print("Modo Automático OK")
+            Cortes()
             if leer("Start" ):
                 print("Start OK")
-                for i in range (leer("P1", 12)):
+                for i in range (set_cortes-1):
                     print("Secuencia OK. Corte: ", i+1)
-                    Cortes()
-                    Secuencia_automatica()
-                mostrar_mensaje("Ciclo terminado")
+                    if Falla(Secuencia_automatica()):
+                        break
+                mostrar_mensaje("Ciclo terminado",0,1)
                 activar("Fin")
-                delay(1)
-                desactivar("Fin")
+            
+            else:
+                print("Detenido. A la espera")
+            
+            detener_todo()
+            delay(1)
         
         else:
-            print("Manual OK")
+            print("Modo Manual OK")
+            delay(1)
             Cortes()
 
 main()
