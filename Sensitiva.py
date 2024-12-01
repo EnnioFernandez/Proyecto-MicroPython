@@ -67,6 +67,7 @@ def Cortes():
         mostrar_mensaje(str(int(leer("P3",11))+1), 10, 1)
         set_cortes = leer("P3", 11)+1
 
+
 #Función para determinar el tiempo transcurrido en segundos
 def time():
     return ticks_ms()/1000
@@ -107,7 +108,8 @@ def verificar_posicion_inicial():
         return False
     return True
 
-#   Listado de Errores:
+
+# Listado de Errores
 def Falla(error):
     #   Error 1: Protección Térmica
     if error == "Error 1":
@@ -123,7 +125,7 @@ def Falla(error):
     if error == "Error 3":
         lcd.clear()
         mostrar_mensaje("Error 3:      ")
-        mostrar_mensaje("Parada Emergencia",0,1)
+        mostrar_mensaje("Parada Emergen",0,1)
 
     if error == "Error 4":
         lcd.clear()
@@ -153,8 +155,7 @@ def Falla(error):
     return True
 
 
-
-
+# Secuencia automática
 def Secuencia_automatica():
     #Paso 1: Verificación de posición inicial
     if not verificar_posicion_inicial():
@@ -229,9 +230,8 @@ def Secuencia_automatica():
     mostrar_mensaje("Corte completado")
     delay(2)
  
-
-
-def monitoreo(pin):
+# Manejo de interrupciones
+def interrupciones(pin):
     detener_todo()
     while leer("PT") or leer("Stop") or leer("PS"):
         if leer("PT"):
@@ -249,21 +249,53 @@ def monitoreo(pin):
 
         lcd.clear()
 
-#   Interrupcion por PT:
-DI[5].irq(trigger=Pin.IRQ_RISING, handler=monitoreo)    
+# Interrupcion por PT:
+DI[5].irq(trigger=Pin.IRQ_RISING, handler=interrupciones)    
 
-#   Interrupción por PS:
-DI[6].irq(trigger=Pin.IRQ_RISING, handler=monitoreo)
+# Interrupción por PS:
+DI[6].irq(trigger=Pin.IRQ_RISING, handler=interrupciones)
 
-#   Interrupción por STOP:
-DI[9].irq(trigger=Pin.IRQ_RISING, handler=monitoreo)    
+# Interrupción por STOP:
+DI[9].irq(trigger=Pin.IRQ_RISING, handler=interrupciones)    
 
+K= [0, 0, 0, 0, 0]
+
+def monitoreo():
+    global K
+    
+
+    if leer("K1") and not K[1]:
+        mostrar_mensaje("K1        ")    
+    if not leer("K1") and K[1]:
+        mostrar_mensaje("          ")
+
+    if leer("K2") and not K[2]:
+        mostrar_mensaje("K2   ",10,0)    
+    if not leer("K2") and K[2]:
+        mostrar_mensaje("     ",10,0)
+
+    if leer("K3") and not K[3]:
+        mostrar_mensaje("K3        ",0,1)    
+    if not leer("K3") and K[3]:
+        mostrar_mensaje("          ",0,1)
+
+    if leer("K4") and not K[4]:
+        mostrar_mensaje("K4   ",10,1)    
+    if not leer("K4") and K[4]:
+        mostrar_mensaje("     ",10,1)
+
+
+    for i in range (1,5):
+        if K[i] != DI[i].value():
+            K[i]= DI[i].value() 
+    
 
 
 def main():
     global set_cortes
     mostrar_mensaje("Sensitiva ON")
     delay(2)
+    lcd.clear()
     while True:
         if leer("Modo"):
             print("Modo Automático OK")
@@ -282,10 +314,11 @@ def main():
             
             detener_todo()
             delay(1)
-        
+                
         else:
             print("Modo Manual OK")
-            delay(1)
-            Cortes()
+            monitoreo() 
+            delay(0.1)           
+        
 
 main()
